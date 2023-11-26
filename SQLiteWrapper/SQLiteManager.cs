@@ -22,7 +22,6 @@ using System.Collections;
 using System.Data.SQLite;
 using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace SQLiteWrapper
 {
@@ -223,7 +222,7 @@ namespace SQLiteWrapper
                 StringBuilder updateWhereSb = new StringBuilder();
 
                 updateHeaderSb.Append("UPDATE " + tblName + " SET ");
-                updateWhereSb.Append("WHERE ");
+                updateWhereSb.Append(" WHERE ");
 
                 Dictionary<string, object> sqlParams = new Dictionary<string, object>();
 
@@ -417,8 +416,15 @@ namespace SQLiteWrapper
         {
             try
             {
-                if (_Connection != null && _Connection.State != System.Data.ConnectionState.Closed)
+                if (_Connection != null)
+                {
+                    using (SQLiteTransaction transaction = _Connection.BeginTransaction())
+                    {
+                        transaction.Commit();
+                    }
+                    _Connection.Close();
                     _Connection.Dispose();
+                }
             } catch (Exception) { }
         }
 
@@ -435,7 +441,6 @@ namespace SQLiteWrapper
             {
                 cmd.Connection = Connection;
                 int ret = cmd.ExecuteNonQuery();
-                //CloseConnection();
                 return ret;
             }
             catch (Exception)
@@ -491,7 +496,9 @@ namespace SQLiteWrapper
             }
         }
 
-        /// <returns>All the SQLite tables associated with the Connected Database.</returns>
+        /// <returns>
+        /// All the SQLite tables associated with the Connected Database.
+        /// </returns>
         public List<string> GetTables()
         {
             List<string> output = new List<string>();
@@ -611,6 +618,13 @@ namespace SQLiteWrapper
             return true;
         }
 
+        /// <summary>
+        /// Attempts to convert the <see cref="SQLiteDataReader"/> column value to a 
+        /// specified <see cref="Type"/>. Not intended for public-use.
+        /// </summary>
+        /// <param name="columnValue">The pulled <see cref="object"/> from <see cref="SQLiteDataReader"/></param>
+        /// <param name="targetType">The desired conversion <see cref="Type"/></param>
+        /// <returns>An <see cref="object"/> in the desired <see cref="Type"/> if successful; null otherwise.</returns>
         private object? ConvertColumnValue(object columnValue, Type targetType)
         {
             try
@@ -775,11 +789,9 @@ namespace SQLiteWrapper
 
                 // Convert the List<object> to IEnumerable<object>
                 output = allObjects;
-
-
                 return true;
-
-            } catch (Exception ex)
+            } 
+            catch (Exception)
             {
                 return false;
             }
@@ -804,7 +816,6 @@ namespace SQLiteWrapper
                 string inputStr = Convert.ToString(input);
 
                 List<T> outputList = new List<T>();
-
                 string[] pairs = inputStr.Replace("\"", "").Trim().Split('|');
 
                 if (!pairs[0].Equals("ARR") || string.IsNullOrEmpty(pairs[1]) || (!ignoreType && !typeof(T).Name.Contains(pairs[1])))
@@ -837,60 +848,6 @@ namespace SQLiteWrapper
         /// <returns>If the procedure was successful.</returns>
         public static bool FromArray<T>(IEnumerable<T> input, out object output) where T : notnull
         {
-            #region Not working perfectly
-            /*
-            output = new object();
-            try
-            {
-                // Try to convert it.
-                if (input == null)
-                    return false;
-
-                Type arrType = typeof(T);
-                if (arrType.IsArray)
-                {
-                    Type? t = arrType.GetElementType();
-                    if (t == null)
-                        return false;
-                    arrType = t;
-                } else if (typeof(IEnumerable).IsAssignableFrom(arrType))
-                {
-                    // If T implements IEnumerable, get the actual element type from the generic argument.
-                    Type[] genericArgs = arrType.GetGenericArguments();
-                    if (genericArgs.Length == 1)
-                    {
-                        arrType = genericArgs[0];
-                    } else
-                    {
-                        throw new InvalidOperationException("Invalid IEnumerable type.");
-                    }
-                }
-
-                string arrName = arrType.Name;
-                if (arrName.Trim().EndsWith("[]"))
-                    arrName = arrName.Substring(0, arrName.Length - 2);
-
-                StringBuilder sb = new StringBuilder("\"ARR|" + arrName + "|(") ;
-                
-                foreach (T element in input)
-                    sb.Append(Convert.ToString(element) + ",");
-
-                string arrStr = sb.ToString();
-
-                if (arrStr.EndsWith(","))
-                    arrStr = arrStr.Substring(0, arrStr.Length - 1);
-
-                arrStr += ")";
-
-                output = arrStr;
-            } catch (Exception)
-            {
-                return false;
-            }
-            return true;
-            */
-            #endregion
-
             output = new object();
             try
             {
@@ -1179,6 +1136,5 @@ namespace SQLiteWrapper
                 return false;
             return ExecuteCommand(delete) > 0;
         }
-
     }
 }

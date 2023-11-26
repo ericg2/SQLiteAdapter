@@ -16,17 +16,42 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 namespace SQLiteWrapper
 {
+    /// <summary>
+    /// This <see cref="SQLiteAttribute"/> is used to instruct the <see cref="SQLiteManager"/> of desired properties.
+    /// </summary>
     public class SQLiteAttribute : Attribute
     {
+        /// <summary>
+        /// If the Property is a Primary Key in the table. It <b>must be UNIQUE and NON-NULL</b>. REQUIRED for 
+        /// updating and deleting other entries in the <see cref="object"/>.
+        /// </summary>
         public bool PrimaryKey { set; get; } = false;
+
+        /// <summary>
+        /// If the Property is not allowed to be NULL.
+        /// </summary>
         public bool NotNull { set; get; } = false;
+
+        /// <summary>
+        /// If the Property is supposed to be ignored and not processed by the <see cref="SQLiteManager"/>.
+        /// </summary>
         public bool Ignore { set; get; } = false;
+
+        /// <summary>
+        /// The <b>optional</b> default value for the Property.
+        /// </summary>
         public object? Default { set; get; } = null;
+
+        /// <summary>
+        /// The <b>optional</b> SQLite column name for the Property.
+        /// </summary>
         public string? Column { set; get; }
 
+        /// <summary>
+        /// Initializes a new <see cref="SQLiteAttribute"/>.
+        /// </summary>
         public SQLiteAttribute()
         { }
     }
